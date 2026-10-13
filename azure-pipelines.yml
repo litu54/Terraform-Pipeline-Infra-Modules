@@ -1,0 +1,17 @@
+trigger: 
+  branches: 
+   include : 
+    - main 
+    - features /*
+
+pool: Ado_Agent
+  
+
+stages: 
+  - stage: Terraform-lint
+    displayName: Tf lint
+    jobs: Terraform lint
+    steps: 
+     - task
+
+
