@@ -100,12 +100,12 @@ stages:
               backendAzureRmStorageAccountName: 'statemod1234'
               backendAzureRmContainerName: 'tfstate'
               backendAzureRmKey: 'dev1.tfstate'
-
           - task: TerraformTask@5
             inputs:
               provider: 'azurerm'
               command: 'plan'
               workingDirectory: '$(System.DefaultWorkingDirectory)/Modules/Preprod/Env/Dev'
+              environmentServiceNameAzureRM: 'ModulePipeline'
 
   - stage: manual_approval
     displayName: Approval-stage
