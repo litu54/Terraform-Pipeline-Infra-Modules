@@ -21,7 +21,7 @@ sub = {
       subname = "frontendsub"  
       vnetname  = "devvnet"
       rgname = "Devlx-modulerg"
-      address_prefx = ["10.0.1.0/24"]
+      address_prefixes = ["10.0.1.0/24"]
     }
 }
 
@@ -59,7 +59,7 @@ vm = {
       vmname = "Ubuntudev"
       location = "East us"
       rgname = "Devlx-modulerg"
-      vm_size = "Standard_B2s"
+      size = "Standard_B2s"
       admin_username = "sysadmin"
       admin_password = "Test1234"
       nickname       = "fronentdnic"
