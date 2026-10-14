@@ -1,69 +1,171 @@
-trigger: 
+trigger:
   branches:
-   include: 
-    - main 
-    - feature/*
-
+    include:
+      - main
+      - feature/*
 
 pool: Ado_Agent
 
+stages:
+  - stage:  TerraformLint
+    displayName: Linting
+    jobs:
+      - job: LintingJob
+        displayName: Linting Job
+        steps:
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: |
+                $ErrorActionPreference = "Stop"
 
-stages: 
-  - stage: Terraform-Lint
-    displayName: Liniting
-    jobs: Terraform-Lint
-    steps: 
-    - task: PowerShell@2
-      inputs:
-        targetType: 'inline'
-        script: |
-          $ErrorActionPreference = "Stop"
-          
-          Write-Host "===== Terraform Lint Stage Started ====="
-          
-          # Step 1: Move to repository root
-          Set-Location "$(Build.SourcesDirectory)"
-          
-          Write-Host "Repository path: $(Get-Location)"
-          
-          # Step 2: Verify TFLint installation
-          if (-not (Get-Command tflint -ErrorAction SilentlyContinue)) {
-              throw "TFLint is not installed or is missing from PATH on the Windows agent."
-          }
-          
-          tflint --version
-          if ($LASTEXITCODE -ne 0) {
-              throw "Unable to execute TFLint."
-          }
-          
-          # Step 3: Locate Terraform files
-          $tfFiles = Get-ChildItem `
-              -Path "$(Build.SourcesDirectory)\Modules\Preprod" `
-              -Filter "*.tf" `
-              -Recurse `
-              -File
-          
-          if (-not $tfFiles) {
-              throw "No Terraform files found under Modules\Preprod."
-          }
-          
-          Write-Host "Terraform files found: $($tfFiles.Count)"
-          
-          # Step 4: Initialize TFLint plugins
-          tflint --init
-          if ($LASTEXITCODE -ne 0) {
-              throw "TFLint plugin initialization failed."
-          }
-          
-          # Step 5: Run TFLint recursively
-          tflint --recursive
-          if ($LASTEXITCODE -ne 0) {
-              throw "TFLint detected issues. Check the pipeline logs."
-          }
-          
-          Write-Host "===== Terraform Lint Stage Passed ====="
-     
-    
-  
+                Write-Host "===== Terraform Lint Stage Started ====="
 
+                Set-Location "$(Build.SourcesDirectory)"
 
+                Write-Host "Repository path: $(Get-Location)"
+
+                if (-not (Get-Command tflint -ErrorAction SilentlyContinue)) {
+                    throw "TFLint is not installed or is missing from PATH on the Windows agent."
+                }
+
+                tflint --version
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Unable to execute TFLint."
+                }
+
+                $tfFiles = Get-ChildItem `
+                    -Path "$(Build.SourcesDirectory)\Modules\Preprod" `
+                    -Filter "*.tf" `
+                    -Recurse `
+                    -File
+
+                if (-not $tfFiles) {
+                    throw "No Terraform files found under Modules\Preprod."
+                }
+
+                Write-Host "Terraform files found: $($tfFiles.Count)"
+
+                tflint --init
+                if ($LASTEXITCODE -ne 0) {
+                    throw "TFLint plugin initialization failed."
+                }
+
+                tflint --recursive
+                if ($LASTEXITCODE -ne 0) {
+                    throw "TFLint detected issues. Check the pipeline logs."
+                }
+
+                Write-Host "===== Terraform Lint Stage Passed ====="
+
+  - stage: Trivy_scan
+    displayName: Security-scan
+    dependsOn: Terraform-Lint
+    jobs:
+      - job: TerraformScan
+        steps:
+          - task: trivy@2
+            inputs:
+              version: 'latest'
+              type: 'repository'
+              target: '$(Build.SourcesDirectory)\Modules\Preprod'
+              scanners: 'misconfig'
+              severities: 'MEDIUM, HIGH'
+
+  - stage: terraform-init
+    dependsOn: Trivy-scan
+    condition: succeeded()
+    jobs:
+      - job: TerraformInit
+        steps:
+          - task: TerraformTask@5
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)\Modules\Preprod\Env\Dev'
+              backendServiceArm: 'ModulePipeline'
+              backendAzureRmStorageAccountName: 'statemod1234'
+              backendAzureRmContainerName: 'tfstate'
+              backendAzureRmKey: 'dev1.tfstate'
+
+  - stage: terraform-validate
+    dependsOn: terraform-init
+    condition: succeeded()
+    jobs:
+      - job: TerraformValidate
+        steps:
+          - task: TerraformTask@5
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)\Modules\Preprod\Env\Dev'
+              backendServiceArm: 'ModulePipeline'
+              backendAzureRmStorageAccountName: 'statemod1234'
+              backendAzureRmContainerName: 'tfstate'
+              backendAzureRmKey: 'dev1.tfstate'
+
+          - task: TerraformTask@5
+            inputs:
+              provider: 'azurerm'
+              command: 'validate'
+              workingDirectory: '$(System.DefaultWorkingDirectory)\Modules\Preprod\Env\Dev'
+
+  - stage: terraform-plan
+    dependsOn: terraform-validate
+    condition: succeeded()
+    jobs:
+      - job: TerraformPlan
+        steps:
+          - task: TerraformTask@5
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)\Modules\Preprod\Env\Dev'
+              backendServiceArm: 'ModulePipeline'
+              backendAzureRmStorageAccountName: 'statemod1234'
+              backendAzureRmContainerName: 'tfstate'
+              backendAzureRmKey: 'dev1.tfstate'
+
+          - task: TerraformTask@5
+            inputs:
+              provider: 'azurerm'
+              command: 'plan'
+              workingDirectory: '$(System.DefaultWorkingDirectory)\Modules\Preprod\Env\Dev'
+
+  - stage: manual-approval
+    displayName: Approval-stage
+    dependsOn: terraform-plan
+    condition: succeeded()
+    jobs:
+      - job: ManualApprove
+        pool: server
+        steps:
+          - task: ManualValidation@1
+            inputs:
+              notifyUsers: 'rout@gmail.com'
+              allowApproversToApproveTheirOwnRuns: false
+              instructions: 'Plz review the code'
+
+  - stage: Apply
+    displayName: Apply-for-dev
+    dependsOn: manual-approval
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - job: Apply
+        steps:
+          - task: TerraformTask@5
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)\Modules\Preprod\Env\Dev'
+              backendServiceArm: 'ModulePipeline'
+              backendAzureRmStorageAccountName: 'statemod1234'
+              backendAzureRmContainerName: 'tfstate'
+              backendAzureRmKey: 'dev1.tfstate'
+
+          - task: TerraformTask@5
+            inputs:
+              provider: 'azurerm'
+              command: 'apply'
+              workingDirectory: '$(System.DefaultWorkingDirectory)\Modules\Preprod\Env\Dev'
+              environmentServiceNameAzureRM: 'ModulePipeline'
