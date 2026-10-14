@@ -21,7 +21,6 @@ sub = {
       subname = "frontendsub"  
       vnetname  = "devvnet"
       rgname = "Prodlx-modulerg"
-      location = "East us"
       address_prefx = ["10.0.2.0/24"]
     }
 }
