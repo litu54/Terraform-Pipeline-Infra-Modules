@@ -1,6 +1,6 @@
 data "azurerm_network_interface" "datanic" {
     for_each = var.vmk
-    name = each.value.vnetname
+    name = each.value.nickname
     resource_group_name = each.value.rgname
 
 }
