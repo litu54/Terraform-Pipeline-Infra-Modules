@@ -59,8 +59,8 @@ stages:
                 Write-Host "===== Terraform Lint Stage Passed ====="
 
   - stage: Trivy_scan
-    displayName: Security-scan
-    dependsOn: Terraform-Lint
+    displayName: Trivy-scan
+    dependsOn: TerraformLint
     jobs:
       - job: TerraformScan
         steps:
@@ -68,13 +68,13 @@ stages:
             inputs:
               version: 'latest'
               type: 'repository'
-              target: '$(Build.SourcesDirectory)\Modules\Preprod'
+              target: '$(Build.SourcesDirectory)\Modules\Preprod\Env\Dev'
               scanners: 'misconfig'
               severities: 'MEDIUM, HIGH'
 
-  - stage: terraform-init
-    dependsOn: Trivy-scan
-    condition: succeeded()
+  - stage: TerraformIint
+    dependsOn: Trivy_scan
+    # condition: succeeded()
     jobs:
       - job: TerraformInit
         steps:
@@ -88,8 +88,8 @@ stages:
               backendAzureRmContainerName: 'tfstate'
               backendAzureRmKey: 'dev1.tfstate'
 
-  - stage: terraform-validate
-    dependsOn: terraform-init
+  - stage: terraform_validate
+    dependsOn: TerraformIint
     condition: succeeded()
     jobs:
       - job: TerraformValidate
@@ -110,8 +110,8 @@ stages:
               command: 'validate'
               workingDirectory: '$(System.DefaultWorkingDirectory)\Modules\Preprod\Env\Dev'
 
-  - stage: terraform-plan
-    dependsOn: terraform-validate
+  - stage: terraform_plan
+    dependsOn: terraform_validate
     condition: succeeded()
     jobs:
       - job: TerraformPlan
@@ -132,9 +132,9 @@ stages:
               command: 'plan'
               workingDirectory: '$(System.DefaultWorkingDirectory)\Modules\Preprod\Env\Dev'
 
-  - stage: manual-approval
+  - stage: manual_approval
     displayName: Approval-stage
-    dependsOn: terraform-plan
+    dependsOn: terraform_plan
     condition: succeeded()
     jobs:
       - job: ManualApprove
@@ -148,7 +148,7 @@ stages:
 
   - stage: Apply
     displayName: Apply-for-dev
-    dependsOn: manual-approval
+    dependsOn: manual_approval
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
     jobs:
       - job: Apply
