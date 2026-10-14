@@ -21,7 +21,7 @@ stages:
                 Invoke-WebRequest -Uri "https://github.com/terraform-linters/tflint/releases/download/v0.50.0/tflint_windows_amd64.zip" -OutFile "tflint.zip"
                 Expand-Archive -Path "tflint.zip" -DestinationPath "$env:USERPROFILE\tflint" -Force
                 echo "##vso[task.prependpath]$env:USERPROFILE\tflint"
-              workingDirectory: '$(Build.SourcesDirectory)\Modules\Preprod\Env\Dev'
+              workingDirectory: '$(Build.SourcesDirectory)/Modules/Preprod/Env/Dev'
 
           - task: PowerShell@2
             displayName: 'Run TFLint'
@@ -31,7 +31,7 @@ stages:
                 $env:PATH += ";$env:USERPROFILE\tflint"
                 tflint --init
                 tflint --force
-              workingDirectory: '$(Build.SourcesDirectory)\Modules\Preprod\Env\Dev'
+              workingDirectory: '$(Build.SourcesDirectory)/Modules/Preprod/Env/Dev'
 
   - stage: Trivy_scan
     displayName: Trivy-scan
@@ -43,7 +43,7 @@ stages:
             inputs:
               version: 'latest'
               type: 'repository'
-              target: '$(Build.SourcesDirectory)\Modules\Preprod\Env\Dev'
+              target: '$(Build.SourcesDirectory)/Modules/Preprod/Env/Dev'
               scanners: 'misconfig'
               severities: 'MEDIUM, HIGH'
 
@@ -57,7 +57,7 @@ stages:
             inputs:
               provider: 'azurerm'
               command: 'init'
-              workingDirectory: '$(System.DefaultWorkingDirectory)\Modules\Preprod\Env\Dev'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Modules/Preprod/Env/Dev'
               backendServiceArm: 'ModulePipeline'
               backendAzureRmStorageAccountName: 'statemod1234'
               backendAzureRmContainerName: 'tfstate'
@@ -73,7 +73,7 @@ stages:
             inputs:
               provider: 'azurerm'
               command: 'init'
-              workingDirectory: '$(System.DefaultWorkingDirectory)\Modules\Preprod\Env\Dev'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Modules/Preprod/Env/Dev'
               backendServiceArm: 'ModulePipeline'
               backendAzureRmStorageAccountName: 'statemod1234'
               backendAzureRmContainerName: 'tfstate'
@@ -83,7 +83,7 @@ stages:
             inputs:
               provider: 'azurerm'
               command: 'validate'
-              workingDirectory: '$(System.DefaultWorkingDirectory)\Modules\Preprod\Env\Dev'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Modules/Preprod/Env/Dev'
 
   - stage: terraform_plan
     dependsOn: terraform_validate
@@ -95,7 +95,7 @@ stages:
             inputs:
               provider: 'azurerm'
               command: 'init'
-              workingDirectory: '$(System.DefaultWorkingDirectory)\Modules\Preprod\Env\Dev'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Modules/Preprod/Env/Dev'
               backendServiceArm: 'ModulePipeline'
               backendAzureRmStorageAccountName: 'statemod1234'
               backendAzureRmContainerName: 'tfstate'
@@ -105,7 +105,7 @@ stages:
             inputs:
               provider: 'azurerm'
               command: 'plan'
-              workingDirectory: '$(System.DefaultWorkingDirectory)\Modules\Preprod\Env\Dev'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Modules/Preprod/Env/Dev'
 
   - stage: manual_approval
     displayName: Approval-stage
@@ -132,7 +132,7 @@ stages:
             inputs:
               provider: 'azurerm'
               command: 'init'
-              workingDirectory: '$(System.DefaultWorkingDirectory)\Modules\Preprod\Env\Dev'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Modules/Preprod/Env/Dev'
               backendServiceArm: 'ModulePipeline'
               backendAzureRmStorageAccountName: 'statemod1234'
               backendAzureRmContainerName: 'tfstate'
@@ -142,6 +142,6 @@ stages:
             inputs:
               provider: 'azurerm'
               command: 'apply'
-              workingDirectory: '$(System.DefaultWorkingDirectory)\Modules\Preprod\Env\Dev'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Modules/Preprod/Env/Dev'
               environmentServiceNameAzureRM: 'ModulePipeline'
 
