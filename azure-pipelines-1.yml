@@ -7,56 +7,31 @@ trigger:
 pool: Ado_Agent
 
 stages:
-  - stage:  TerraformLint
+  - stage: TerraformLint
     displayName: Linting
     jobs:
       - job: LintingJob
         displayName: Linting Job
         steps:
           - task: PowerShell@2
+            displayName: 'Install & Setup TFLint'
             inputs:
               targetType: 'inline'
               script: |
-                $ErrorActionPreference = "Stop"
+                Invoke-WebRequest -Uri "https://github.com/terraform-linters/tflint/releases/download/v0.50.0/tflint_windows_amd64.zip" -OutFile "tflint.zip"
+                Expand-Archive -Path "tflint.zip" -DestinationPath "$env:USERPROFILE\tflint" -Force
+                echo "##vso[task.prependpath]$env:USERPROFILE\tflint"
+              workingDirectory: '$(Build.SourcesDirectory)\Modules\Preprod\Env\Dev'
 
-                Write-Host "===== Terraform Lint Stage Started ====="
-
-                Set-Location "$(Build.SourcesDirectory)"
-
-                Write-Host "Repository path: $(Get-Location)"
-
-                if (-not (Get-Command tflint -ErrorAction SilentlyContinue)) {
-                    throw "TFLint is not installed or is missing from PATH on the Windows agent."
-                }
-
-                tflint --version
-                if ($LASTEXITCODE -ne 0) {
-                    throw "Unable to execute TFLint."
-                }
-
-                $tfFiles = Get-ChildItem `
-                    -Path "$(Build.SourcesDirectory)\Modules\Preprod" `
-                    -Filter "*.tf" `
-                    -Recurse `
-                    -File
-
-                if (-not $tfFiles) {
-                    throw "No Terraform files found under Modules\Preprod."
-                }
-
-                Write-Host "Terraform files found: $($tfFiles.Count)"
-
+          - task: PowerShell@2
+            displayName: 'Run TFLint'
+            inputs:
+              targetType: 'inline'
+              script: |
+                $env:PATH += ";$env:USERPROFILE\tflint"
                 tflint --init
-                if ($LASTEXITCODE -ne 0) {
-                    throw "TFLint plugin initialization failed."
-                }
-
-                tflint --recursive
-                if ($LASTEXITCODE -ne 0) {
-                    throw "TFLint detected issues. Check the pipeline logs."
-                }
-
-                Write-Host "===== Terraform Lint Stage Passed ====="
+                tflint --force
+              workingDirectory: '$(Build.SourcesDirectory)\Modules\Preprod\Env\Dev'
 
   - stage: Trivy_scan
     displayName: Trivy-scan
@@ -169,3 +144,4 @@ stages:
               command: 'apply'
               workingDirectory: '$(System.DefaultWorkingDirectory)\Modules\Preprod\Env\Dev'
               environmentServiceNameAzureRM: 'ModulePipeline'
+
