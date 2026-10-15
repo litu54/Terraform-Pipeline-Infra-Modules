@@ -21,7 +21,7 @@ sub = {
       subname = "frontendsub"  
       vnetname  = "devvnet"
       rgname = "Prodlx-modulerg"
-      address_prefx = ["10.0.2.0/24"]
+      address_prefixes = ["10.0.2.0/24"]
     }
 }
 
