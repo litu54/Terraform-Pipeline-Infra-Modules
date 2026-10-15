@@ -3,6 +3,10 @@ trigger:
     include:
       - main
       - feature/*
+  # paths: 
+  #   include: 
+  #     - Env/Dev/**
+
 
 pool: Ado_Agent
 
@@ -44,7 +48,7 @@ stages:
 
   - stage: Trivy_scan
     displayName: Trivy-scan
-    dependsOn: TerraformLint
+    dependsOn: []
     jobs:
       - job: TerraformScan
         steps:
